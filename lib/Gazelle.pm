@@ -128,6 +128,13 @@ sub torrent_search {
   return $payload->{results};
 }
 
+sub torrent_info {
+  my ($self, $id) = @_;
+  my $payload     = $self->_api_get('torrent', 'id' => $id) or return;
+
+  return $payload;
+}
+
 sub _api_get {
   my ($self, $action, %addl) = @_;
   my $log = Log::Log4perl->get_logger('gazelle.interface._api_get');
