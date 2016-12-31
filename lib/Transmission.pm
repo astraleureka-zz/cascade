@@ -23,7 +23,7 @@ our %TM_REG; # to track unique instances
 
 sub new {
   my ($class, %args) = @_;
-  my $log            = Log::Log4perl->get_logger('transmission.intf.new');
+  my $log            = Log::Log4perl->get_logger('transmission.interface.new');
   my $obj            = bless { }, $class;
   my $error          = 0;
 
@@ -55,7 +55,7 @@ sub new {
 
 sub login {
   my ($self)  = @_;
-  my $log     = Log::Log4perl->get_logger('transmission.intf.login');
+  my $log     = Log::Log4perl->get_logger('transmission.interface.login');
 
   return 1 if $self->{state} == TM_ALIVE; # already logged in
 
@@ -94,7 +94,7 @@ sub torrent_list {
 
 sub _rpc_call {
   my ($self, $method, $args) = @_;
-  my $log                    = Log::Log4perl->get_logger('transmission.rpc');
+  my $log                    = Log::Log4perl->get_logger('transmission.interface._rpc_call');
   $log->logconfess('RPC connection is not alive'), return unless $self->{state} == TM_ALIVE;
 
   my $res = $self->{ua}->call($self->{rpc}, { method => $method, arguments => $args });

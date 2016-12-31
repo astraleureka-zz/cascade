@@ -25,7 +25,7 @@ our %GZ_REG; # to track unique instances
 
 sub new {
   my ($class, %args) = @_;
-  my $log            = Log::Log4perl->get_logger('gazelle.intf.new');
+  my $log            = Log::Log4perl->get_logger('gazelle.interface.new');
   my $obj            = bless { }, $class;
   my $error          = 0;
 
@@ -68,7 +68,7 @@ sub new {
 
 sub login {
   my ($self)  = @_;
-  my $log     = Log::Log4perl->get_logger('gazelle.intf.login');
+  my $log     = Log::Log4perl->get_logger('gazelle.interface.login');
 
   return 1 if $self->{state} == GZ_ALIVE; # already logged in
 
@@ -124,7 +124,7 @@ sub torrent_search {
 
 sub _api_get {
   my ($self, $action, %addl) = @_;
-  my $log = Log::Log4perl->get_logger('gazelle.api.GET');
+  my $log = Log::Log4perl->get_logger('gazelle.interface._api_get');
   $log->logconfess('API connection is not alive'), return unless $self->{state} == GZ_ALIVE;
 
   my $url = sprintf($self->{api_base}.'ajax.php?action=%s', $action);
@@ -151,7 +151,7 @@ sub _api_get {
 
 sub _api_post {
   my ($self, $action, %addl) = @_;
-  my $log = Log::Log4perl->get_logger('gazelle.api.POST');
+  my $log = Log::Log4perl->get_logger('gazelle.interface._api_post');
   $log->logconfess('API connection is not alive'), return unless ($action eq 'login' || $self->{state} == GZ_ALIVE);
 
   my $url  = $self->{api_base};
