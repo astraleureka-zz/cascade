@@ -27,7 +27,7 @@ sub new {
   my ($class, %args) = @_;
   my $log            = Log::Log4perl->get_logger('gazelle.intf.new');
   my $obj            = bless { }, $class;
-  my $error;
+  my $error          = 0;
 
   foreach my $key (qw[ident api_base cookie_jar username password]) {
     unless (defined $args{$key}) {
