@@ -75,7 +75,7 @@ sub login {
   # test to see if our existing cookie is valid, and skip auth if so
   my $old_state  = $self->{state};
   $self->{state} = GZ_ALIVE;
-  if (ref $self->_api_get('index') eq 'HASH') { # cookie is valid
+  if ($self->userstats_update) { # all API calls should succeed if the cookie is still valid
     $log->info(sprintf('%s: already logged in', $self->{ident}));
     return 1;
   }
@@ -95,6 +95,12 @@ sub login {
   $self->{state} = GZ_ALIVE; 
   $log->info(sprintf('%s: authentication succeeded', $self->{ident}));
   $self->{jar}->save($self->{jar_path}); # write cookies only when successfully authenticated
+
+  unless ($self->userstats_update) { # wasn't populated the first time since cookie was invalid
+    $log->fatal('userstats_update failed even though we succeeded authentication?');
+    return;
+  }
+
   return 1;
 }
 
@@ -116,8 +122,8 @@ sub userstats_update {
 # order_by order_way
 
 sub torrent_search {
-  my ($self, $match, %addl) = @_;
-  my $payload = $self->_api_get('browse', 'searchstr' => $match, %addl) or return;
+  my ($self, $match, $addl) = @_;
+  my $payload = $self->_api_get('browse', 'searchstr' => $match // "", %{ $addl }) or return;
 
   return $payload->{results};
 }
