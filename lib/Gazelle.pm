@@ -113,8 +113,10 @@ sub userstats_update {
   $self->{bytes_down} = $payload->{userstats}{downloaded};
   $self->{ratio}      = $payload->{userstats}{ratio};
   $self->{user_id}    = $payload->{userstats}{id};
+  $self->{authkey}    = $payload->{authkey};
+  $self->{passkey}    = $payload->{passkey};
 
-  $log->info(sprintf('%s: %.2fGiB/%.2fGiB up/down (ratio: %.2f)', $payload->{username}, $self->{bytes_up} / 1073741824, $self->{bytes_down} / 1073741824, $self->{bytes_up} / $self->{bytes_down}));
+  $log->info(sprintf('%s[%s]: %.2fGiB/%.2fGiB up/down (ratio: %.2f)', $payload->{username}, $payload->{userstats}{class}, $self->{bytes_up} / 1073741824, $self->{bytes_down} / 1073741824, $self->{bytes_up} / $self->{bytes_down}));
 
   return 1;
 }
