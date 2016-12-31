@@ -66,24 +66,26 @@ sub login {
   my ($self)  = @_;
   my $log     = Log::Log4perl->get_logger('gazelle.intf.login');
 
-  return if $self->{state} == GZ_ALIVE; # already logged in
+  return 1 if $self->{state} == GZ_ALIVE; # already logged in
 
   $log->debug(sprintf('%s: attempting authentication as "%s"', $self->{ident}, $self->{username}));
   my $payload = $self->_api_post('login', username => $self->{username}, password => $self->{password});
 
   if ($payload->{status} eq 'failure') {
+    $self->{state} = GZ_DEAD;
     $log->fatal(sprintf('%s: authentication failed', $self->{ident}));
     return;
   }
- 
+
+  $self->{state} = GZ_ALIVE; 
   $log->info(sprintf('%s: authentication succeeded', $self->{ident})); 
   return 1;
 }
 
 sub userstats_update {
   my ($self)  = @_;
-  my $log = Log::Log4perl->get_logger('gazelle.api.userstats');
-  my $payload = $self->_api_get('index');
+  my $log = Log::Log4perl->get_logger('gazelle.api.userstats_update');
+  my $payload = $self->_api_get('index') or return;
 
   $self->{bytes_up}   = $payload->{userstats}{uploaded};
   $self->{bytes_down} = $payload->{userstats}{downloaded};
@@ -99,7 +101,7 @@ sub userstats_update {
 
 sub torrent_search {
   my ($self, $match, %addl) = @_;
-  my $payload = $self->_api_get('browse', 'searchstr' => $match, %addl);
+  my $payload = $self->_api_get('browse', 'searchstr' => $match, %addl) or return;
 
   return $payload->{results};
 }
@@ -107,6 +109,8 @@ sub torrent_search {
 sub _api_get {
   my ($self, $action, %addl) = @_;
   my $log = Log::Log4perl->get_logger('gazelle.api.GET');
+  $log->logconfess('API connection is not alive'), return unless $self->{state} == GZ_ALIVE;
+
   my $url = sprintf($self->{api_base}.'ajax.php?action=%s', $action);
   # manually prepare urlencoded keypairs 
   if (keys %addl) {
@@ -127,6 +131,8 @@ sub _api_get {
 sub _api_post {
   my ($self, $action, %addl) = @_;
   my $log = Log::Log4perl->get_logger('gazelle.api.POST');
+  $log->logconfess('API connection is not alive'), return unless ($action eq 'login' || $self->{state} == GZ_ALIVE);
+
   my $url  = $self->{api_base};
      $url .= ($action eq 'login' ? 'login.php?nowarn=%s' : 'ajax.php?action=%s'); # sprintf complains if no format 
 
