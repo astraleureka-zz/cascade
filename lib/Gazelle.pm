@@ -50,8 +50,12 @@ sub new {
   $obj->{api_base} .= '/' unless substr($obj->{api_base}, length($obj->{api_base}) - 1, 1) eq '/';
 
   # confirmed settings are OK, load supporting modules and configure
+  $obj->{jar_path} = $FindBin::Bin.'/../db/'.$obj->{cookie_jar};
+  $obj->{jar} = new HTTP::Cookies (ignore_discard => 1);
+  $obj->{jar}->load($obj->{jar_path});
+
   $obj->{ua} = new LWP::UserAgent;
-  $obj->{ua}->cookie_jar(new HTTP::Cookies (file => $FindBin::Bin.'/../db/'.$obj->{cookie_jar}, autosave => 1));
+  $obj->{ua}->cookie_jar($obj->{jar});
   $obj->{ua}->agent('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:53.0) Gecko/20100101 Firefox/53.0');
   $obj->{ua}->timeout(5);
   $obj->{ua}->add_handler("request_send",  sub { Log::Log4perl->get_logger('gazelle.ua.request')->debug(shift->dump); return });
@@ -68,8 +72,19 @@ sub login {
 
   return 1 if $self->{state} == GZ_ALIVE; # already logged in
 
+  # test to see if our existing cookie is valid, and skip auth if so
+  my $old_state  = $self->{state};
+  $self->{state} = GZ_ALIVE;
+  if (ref $self->_api_get('index') eq 'HASH') { # cookie is valid
+    $log->info(sprintf('%s: already logged in', $self->{ident}));
+    return 1;
+  }
+
+  # no dice, proceed with logging in
+  $self->{state} = $old_state;
+
   $log->debug(sprintf('%s: attempting authentication as "%s"', $self->{ident}, $self->{username}));
-  my $payload = $self->_api_post('login', username => $self->{username}, password => $self->{password});
+  my $payload = $self->_api_post('login', username => $self->{username}, password => $self->{password}, keeplogged => 1);
 
   if ($payload->{status} eq 'failure') {
     $self->{state} = GZ_DEAD;
@@ -78,7 +93,8 @@ sub login {
   }
 
   $self->{state} = GZ_ALIVE; 
-  $log->info(sprintf('%s: authentication succeeded', $self->{ident})); 
+  $log->info(sprintf('%s: authentication succeeded', $self->{ident}));
+  $self->{jar}->save($self->{jar_path}); # write cookies only when successfully authenticated
   return 1;
 }
 
@@ -122,6 +138,11 @@ sub _api_get {
   my $res = $self->{ua}->get($url);
   $log->logconfess($res->status_line) unless $res->is_success;
 
+  if ($res->base =~ m!login\.php$!) {
+    $log->debug(sprintf('%s: api request redirected to login (authentication failed or cookie expired)', $self->{ident}));
+    return;
+  }
+
   my $payload = decode_json($res->decoded_content);
   $log->debug(Dumper $payload) if $log->is_debug;
 
@@ -147,6 +168,11 @@ sub _api_post {
   }
 
   $log->logconfess($res->status_line) unless $res->is_success;
+
+  if ($res->base =~ m!login\.php$!) {
+    $log->debug(sprintf('%s: api request redirected to login (authentication failed or cookie expired)', $self->{ident}));
+    return;
+  }
 
   my $payload = decode_json($res->decoded_content);
   $log->debug(Dumper $payload) if $log->is_debug;
