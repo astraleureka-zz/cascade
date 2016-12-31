@@ -137,6 +137,12 @@ sub torrent_info {
   return $payload;
 }
 
+sub torrent_url {
+  my ($self, $id) = @_;
+
+  return sprintf('%storrents.php?action=download&id=%d&authkey=%s&torrent_pass=%s', $self->{api_base}, $id, $self->{authkey}, $self->{passkey});
+}
+
 sub _api_get {
   my ($self, $action, %addl) = @_;
   my $log = Log::Log4perl->get_logger('gazelle.interface._api_get');
