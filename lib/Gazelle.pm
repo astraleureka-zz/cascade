@@ -29,7 +29,7 @@ sub new {
   my $obj            = bless { }, $class;
   my $error;
 
-  foreach my $key (qw[ident api cookie_jar username password seedbox]) {
+  foreach my $key (qw[ident api_base cookie_jar username password]) {
     unless (defined $args{$key}) {
       $log->error(sprintf('attempted to instantiate gazelle interface "%s" without mandatory key "%s"', ($args{ident} // 'unknown'), $key));
       $error++;
@@ -45,6 +45,9 @@ sub new {
   return if $error > 0;
 
   $GZ_REG{ $obj->{ident} } = $obj;
+
+  # append trailing slash if not present
+  $obj->{api_base} .= '/' unless substr($obj->{api_base}, length($obj->{api_base}) - 1, 1) eq '/';
 
   # confirmed settings are OK, load supporting modules and configure
   $obj->{ua} = new LWP::UserAgent;
