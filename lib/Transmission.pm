@@ -89,9 +89,7 @@ sub torrent_list {
   my $log     = Log::Log4perl->get_logger('transmission.api.torrent_list');
   my $payload = $self->_rpc_call('torrent-get', { fields => [qw[id name]] }) or return;
 
-  $log->debug(Dumper $payload);
-
-  return 1;
+  return $payload->{arguments}{torrents};
 }
 
 sub _rpc_call {
