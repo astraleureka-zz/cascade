@@ -1,0 +1,34 @@
+{
+  "gazelle": [
+    {
+      "ident": "apollo",
+      "api_base": "https://apollo.rip/",
+      "cookie_jar": "cookies.txt",
+      "username": "",
+      "password": ""
+    }
+  ],
+
+  "genres": [
+    "ambient",
+    "idm",
+    "downtempo",
+    "synthpop",
+    "darkwave",
+    "witch.house",
+    "progressive.house",
+    "tech.house",
+    "deep.house",
+    "shoegaze",
+    "trip.hop",
+    "chillwave",
+    "witch.trap"
+  ],
+
+  "formats": [
+    "FLAC"
+  ],
+
+  "watch_path": ""
+}
+

@@ -1,0 +1,74 @@
+#!/usr/bin/perl -w
+use strict;
+no warnings 'uninitialized';
+
+use JSON 'decode_json';
+use Log::Log4perl ':no_extra_logdie_message';
+use Data::Dumper;
+use DBI;
+
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+
+# internal libraries
+use Gazelle;
+
+sub each_gazelle(&);
+
+# load configuration files
+Log::Log4perl::init_once("$FindBin::Bin/../etc/logger.conf");
+my $log = Log::Log4perl->get_logger('cascade.main');
+my ($config, %hdl);
+{ 
+  open my $fh, '<', "$FindBin::Bin/../etc/cascade.conf" or $log->fatal("open $FindBin::Bin/../etc/cascade.conf: $!");
+  my $buffer = join '', (<$fh>);
+  close $fh;
+  eval {
+    $config = decode_json($buffer);
+  };
+  $log->fatal("decode_json cascade.conf: $@") if $@;
+}
+
+{
+  foreach my $gaz (@{ $config->{gazelle} }) {
+    $log->fatal('invalid gazelle tracker definition') unless ref $gaz eq 'HASH';
+    my $ident = $gaz->{ident};
+    $hdl{g}{$ident} = new Gazelle (%{ $gaz });
+    $hdl{g}{$ident}->login or $log->fatal("gazelle $ident: login failed");
+  }
+}
+
+each_gazelle sub {
+  my ($g) = @_;
+  if ($g->{ratio} < 1.0) {
+    $log->info('%s ratio under 1.0, skipping', $g->{ident});
+    delete $hdl{g}{ $g->{ident} };
+    return;
+  }
+
+  foreach my $torrent (@{ $g->torrent_search(undef, { order_by => 'time', order_way => 'desc', group_results => 0 }) }) {
+    my $info   = $g->torrent_info($torrent->{torrentId});
+    my ($snatch_genre, $snatch_fmt);
+
+    # match our genres against the torrent
+    foreach my $genre (@{ $config->{genres} }) {
+      $snatch_genre = 1 if grep { /^\Q$genre\E$/ } @{ $torrent->{tags} };
+    }
+
+    my $format = $info->{torrent}{format};
+    $snatch_fmt = 1 if grep { /^\Q$format\E$/ } @{ $config->{formats} };
+
+    if ($snatch_genre && $snatch_fmt && ! -e $config->{watch_path}.$torrent->{torrentId}.'.torrent.added') {
+      $log->info(sprintf('snatching %s:%d -- %s - %s  ', $g->{ident}, $torrent->{torrentId}, join(', ', map { $_->{name} } @{ $info->{group}{musicInfo}{artists} }), $info->{group}{name}));
+      system('/usr/bin/wget', '-O', $config->{watch_path}.$torrent->{torrentId}.'.torrent', $g->torrent_url($torrent->{torrentId}));
+    }
+  }
+};
+
+sub each_gazelle(&) {
+  my ($sub) = @_;
+
+  foreach my $gaz (keys %{ $hdl{g} }) {
+    $sub->($hdl{g}{$gaz});
+  }
+}
